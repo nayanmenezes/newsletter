@@ -1,0 +1,58 @@
+import json
+import boto3
+
+# Initialize the SES client
+ses_client = boto3.client('ses')
+
+# Replace with your DynamoDB table name
+DYNAMODB_TABLE_NAME = 'newsletter-emails'
+
+def lambda_handler(event, context):
+    # Iterate through each record in the event
+    for record in event['Records']:
+        # Check if the event is an INSERT event
+        if record['eventName'] == 'INSERT':
+            # Get the new record data from the DynamoDB stream event
+            new_record = record['dynamodb']['NewImage']
+
+            # Extract the recipient's email address from the new record
+            recipient_email = new_record['email_address']['S']
+
+            # Optional: Extract additional data, like the recipient's name
+            
+
+            # Format the email content
+            email_subject = "New Record Added to DynamoDB"
+            email_body = (
+               "You are now subscribed to Nayan's newsletter."
+            )
+
+            # Define the email parameters
+            email_params = {
+                'Source': 'nayanmenezes2@gmail.com',  # Replace with your verified SES email
+                'Destination': {
+                    'ToAddresses': [recipient_email],  # Use the recipient's email from DynamoDB
+                },
+                'Message': {
+                    'Subject': {
+                        'Data': email_subject,
+                    },
+                    'Body': {
+                        'Text': {
+                            'Data': email_body,
+                        },
+                    },
+                },
+            }
+
+            # Send the email using SES
+            try:
+                response = ses_client.send_email(**email_params)
+                print(f"Email sent to {recipient_email}! Message ID: {response['MessageId']}")
+            except Exception as e:
+                print(f"Error sending email: {str(e)}")
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Function executed successfully')
+    }
